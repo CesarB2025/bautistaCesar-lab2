@@ -6,9 +6,8 @@
 #include <sys/wait.h>
 #include <unistd.h>
 #include <string.h>
-#include <time.h>
-#include <sys/shm.h>
-#include <sys/ipc.h>
+#include "lab2.h"
+
 /************************************************************\
  * get_arguments - returns the command line arguments not
  *                 including this file in an array with the
@@ -47,21 +46,10 @@ int main(int argc, char** argv)
         fprintf(stderr,"SYNOPSIS: %s <cmd> <cmd arguments>\n",argv[0]);
         return 1;
     }
-    command = argv[1];
-    command_args = get_arguments(argc,argv);
-    int shmid;
-    shmid = shmget(IPC_PRIVATE, sizeof(struct timeval), IPC_CREAT| 0666);
-    if(shmid<0){
-        perror("shmget");
-        exit(1);
-    }
+    
     // TODO: call ipc_create to create shared memory region to which parent
     //       child have access.
-    ipc_ptr = (char*) shmat(shmid,NULL,0);
-    if(ipc_ptr == (char*)-1){
-        perror("shmat");
-        exit(1);
-    }
+    ipc_ptr = ipc_create(64);
 
     /* fork a child process */
     pid = fork();
@@ -75,27 +63,26 @@ int main(int argc, char** argv)
         gettimeofday(&start_time, NULL);
 
         // TODO: write the time to the IPC
-        *(struct timeval*) ipc_ptr = start_time;
+         memcpy(ipc_ptr, &start_time, sizeof(struct timeval));
+
         // TODO: get the list of arguments to be used in execvp() and 
         // execute execvp()
-        execvp(command, command_args);
-        perror("execvp");
-        exit(1);
+        command_args = get_arguments(argc, argv);
+        execvp(command_args[0], command_args);
     }
     else { /* parent process */
         // TODO: have parent wait and get status of child.
         //       Use the variable status to store status of child. 
-        wait(&status);
+        waitpid(pid, &status, 0);
 
         // TODO: get the current time using gettimeofday
         gettimeofday(&current_time, NULL);
 
         // TODO: read the start time from IPC
-        start_time = *(struct timeval*) ipc_ptr;
+        memcpy(&start_time, ipc_ptr, sizeof(struct timeval));
 
         // TODO: close IPC
-        shmdt(ipc_ptr);
-        shmctl(shmid,IPC_RMID, NULL);
+        ipc_close();
 
         // NOTE: DO NOT ALTER THE LINE BELOW.
         printf("Elapsed time %.5f\n",elapsed_time(&start_time, &current_time));

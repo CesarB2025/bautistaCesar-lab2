@@ -1,16 +1,12 @@
 
-CC = gcc
-CFLAGS = -Wall -g
-TARGET = time
-OBJS = ipc.o time.o main.o
+time:  main.o ipc.o time.o
+	$(CC) -o $@ $?
+ipc: ipc.c ipc.h
+	$(CC) -c $?
+lab2: lab2.h
+	$(CC) -c $?
 
-all: $(TARGET)
-$(TARGET): $(OBJS)
-	$(CC) $(CFLAGS) -o $(TARGET) $(OBJS)
-
-%.o: %.c
-	$(CC) $(CFLAGS) -c $<
-
+main: main.c lab2.h ipc.c time.c
+	$(CC) -c $?
 clean:
-	rm -f $(OBJS) $(TARGET)
-.PHONY:
+	-rm -f *.o
